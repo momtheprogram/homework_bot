@@ -67,12 +67,13 @@ def check_response(response: dict) -> list:
     """Проверить ответ. Получить список домашек."""
     if not isinstance(response, dict):
         raise TypeError()
-    if not isinstance(response['homeworks'], list):
-        raise TypeError()
-    if 'homeworks' not in response:# and 'current_date' not in response:
+    if 'homeworks' not in response and 'current_date' not in response:
         raise KeyError()
+    if not isinstance(response.get('homeworks'), list):
+        raise TypeError()
     return response['homeworks']
     
+
 
 def parse_status(homework: dict) -> str:
     """Получить информацию о статусе домашки."""
