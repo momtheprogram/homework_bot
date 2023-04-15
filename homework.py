@@ -16,7 +16,6 @@ load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PR_TOKEN')
 TELEGRAM_TOKEN = os.getenv('T_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('CHAT_ID')
-TOKENS = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -34,7 +33,8 @@ NOT_JSON_MESSAGE = 'Вернулся не json'
 
 def check_tokens() -> bool:
     """Проверяет наличие токенов."""
-    return all(TOKENS)
+    tokens = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
+    return all(tokens)
 
 
 def send_message(bot, message: str) -> None:
@@ -55,7 +55,7 @@ def get_api_answer(timestamp: int) -> dict:
     try:
         response = requests.get(url, headers=headers, params=payload)
         if response.status_code != 200:
-            raise RuntimeError(f'REQUEST_STATUS_MESSAGE {response.status_code}')
+            raise RuntimeError('REQUEST_STATUS_MESSAGE')
         if not response.json():
             logging.error(NOT_JSON_MESSAGE)
     except requests.exceptions.RequestException:
@@ -72,7 +72,6 @@ def check_response(response: dict) -> list:
     if not isinstance(response.get('homeworks'), list):
         raise TypeError()
     return response['homeworks']
-    
 
 
 def parse_status(homework: dict) -> str:
@@ -127,71 +126,3 @@ if __name__ == '__main__':
             logging.FileHandler(__file__ + '.log', encoding='UTF-8', mode='w'),
             logging.StreamHandler(sys.stdout)])
     main()
-
-
-    # try:
-    #     False
-    #     raise RuntimeError
-    # except KeyError:
-    #     raise KeyError("!!!")
-    
-    
-    # def foo():
-    #     pass
-
-    # #print(foo())
-
-    # def some(data) -> str:
-    #     try:
-    #         if data == 1:
-    #             return 'success'
-    #     except KeyError:
-    #         raise Exception("!!!")
-
-    # result = print(some(1)) #success
-    # print(some(2)) #
-
-    # # data = {
-    # #     1: "data1",
-    # #     2: "data2",
-    # #     3: None
-    # # }
-
-    
-
-    # # print(3 in data)
-
-    # # value = data.get(3)
-
-    # # try:
-    # #     data[3]
-    # # except KeyError:
-    # #     ...
-
-
-    # if 1:
-    #     print('ok')
-
-    # if "1":
-    #     print("ok 1")
-
-    # if False:
-    #     print("not ok 1")
-    
-    # if "":
-    #     print("not ok 2")
-    
-    # if True:
-    #     print("True")
-    
-    # if True == True:
-    #     print("True 2")
-    
-    # if 1 and True:
-    #     print("123")
-
-    # if False or True:
-    #     print("222")
-
-    # if False and True:
-    #     print("555")
