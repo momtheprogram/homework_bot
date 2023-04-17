@@ -26,9 +26,6 @@ HOMEWORK_VERDICTS = {
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
-START_MESSAGE = 'Запуск Бота'
-REQUEST_STATUS_MESSAGE = 'Требуемый статус не был получен.'
-NOT_JSON_MESSAGE = 'Вернулся не json'
 
 
 def check_tokens() -> bool:
@@ -39,6 +36,7 @@ def check_tokens() -> bool:
 
 def send_message(bot, message: str) -> None:
     """Отправить сообщение в телеграм."""
+    logging.info('Отправка сообщения')
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug('Сообщение отправлено успешно')
@@ -52,12 +50,21 @@ def get_api_answer(timestamp: int) -> dict:
     url = ENDPOINT
     headers = HEADERS
     payload = {'from_date': timestamp}
+    request_message = (
+        f'Запрос по ссылке {url}, с headers {headers}, cо значениями {payload}'
+    )
+    request_status_message = (
+        f'Ошибка статуса по ссылке {url}, с headers {headers},'
+        f'c значениями {payload}.'
+    )
     try:
         response = requests.get(url, headers=headers, params=payload)
+        logging.debug(request_message)
         if response.status_code != 200:
-            raise RuntimeError('REQUEST_STATUS_MESSAGE')
+            logging.error(request_status_message)
+            raise RuntimeError()
         if not response.json():
-            logging.error(NOT_JSON_MESSAGE)
+            logging.error('Вернулся не json')
     except requests.exceptions.RequestException:
         raise RuntimeError()
     return response.json()
@@ -65,9 +72,14 @@ def get_api_answer(timestamp: int) -> dict:
 
 def check_response(response: dict) -> list:
     """Проверить ответ. Получить список домашек."""
+    logging.debug('Проверка ответа сервера')
     if not isinstance(response, dict):
+        logging.error('Ответ не в виде словаря')
         raise TypeError()
-    if 'homeworks' not in response and 'current_date' not in response:
+    # if 'homeworks' not in response and 'current_date' not in response:
+    #     raise KeyError()
+    if missed_keys := {'homeworks', 'current_date'} - response.keys():
+        logging.error(f'В ответе API нет ожидаемых ключей: {missed_keys}')
         raise KeyError()
     if not isinstance(response.get('homeworks'), list):
         raise TypeError()
@@ -76,18 +88,21 @@ def check_response(response: dict) -> list:
 
 def parse_status(homework: dict) -> str:
     """Получить информацию о статусе домашки."""
+    logging.debug('Получение статуса домашки')
     try:
         status = homework['status']
         verdict = HOMEWORK_VERDICTS[status]
         name = homework['homework_name']
         return f'Изменился статус проверки работы "{name}". {verdict}'
     except KeyError:
-        raise KeyError('Неожиданный статус работы')
+        logging.error('Неожиданный статус работы')
+        raise KeyError()
 
 
 def main():
     """Основная логика работы бота."""
-    logging.info(START_MESSAGE)
+    logging.info('Запуск Бота')
+    logging.debug('Проверка наличия токенов')
     if not check_tokens():
         logging.critical("Нет токенов")
         sys.exit(1)
@@ -100,14 +115,16 @@ def main():
         try:
             response = get_api_answer(timestamp)
             homeworks = check_response(response)
-            current_homework = homeworks[0]
-            if current_homework is not None:
-                if current_homework != previos_homework:
-                    send_message(bot, parse_status(current_homework))
-                    previos_homework = current_homework
+            logging.debug('Проверка существования новой домашки')
+            if homeworks:
+                logging.info('Найденa домашка')
+                if homeworks[0] != previos_homework:
+                    logging.info('Есть новая домашка')
+                    send_message(bot, parse_status(homeworks[0]))
+                    previos_homework = homeworks[0]
+            else:
+                logging.debug('Новых домашек еще не было')
 
-        # except requests.exceptions.RequestException:
-        #     logging.error(REQUEST_STATUS_MESSAGE)
         except TelegramError as error:
             message = f'Сбой отправки сообщения: {error}'
             logging.exception(message)
